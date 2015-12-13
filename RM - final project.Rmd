@@ -1,0 +1,121 @@
+---
+title: "Untitled"
+author: "Tim Wise"
+date: "November 2015"
+output:
+  word_document: default
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+  html_document:
+    fig_caption: yes
+    keep_md: yes
+---
+
+### Executive Summary
+
+### Analysis Details
+
+```{r, echo=FALSE}
+# Create our working dataset D converting the transmission type to a factor with string values
+data(mtcars)
+D <- mtcars
+
+D[mtcars$am == 0,'am'] <- 'Automatic'
+D[mtcars$am == 1,'am'] <- 'Manual'
+
+D[,'am'] <- as.factor(D[,'am'])
+```
+
+First, let's compare the mileage of cars with automatic transmissions to those with manual transmissions.
+
+```{r, mpgByTransBoxplot, eval=FALSE, echo=FALSE}
+boxplot(mpg ~ am, data=D, 
+        main="Mileage by Transmission Type",
+        xlab="Transmission Type",
+        ylab="Miles per Gallon")
+```
+
+```{r, eval=TRUE, echo=FALSE}
+medianAutomatic <- round(median(D[D$am == 'Automatic', 'mpg']), 1)
+medianManual    <- round(median(D[D$am == 'Manual', 'mpg']), 1)
+```
+
+```{r, mpgByTransTTest, eval=TRUE, echo=FALSE}
+t <- t.test(mpg ~ am, paired=FALSE, var.equal=FALSE, data=D)
+```
+
+```{r, stuff, eval=FALSE, echo=FALSE}
+fit.mpg.am <- lm(mpg~am, data=D)
+summary(fit.mpg.am)
+confint(fit.mpg.am)
+
+fit.wt.am <- lm(wt ~ am, data=D)
+summary(fit.wt.am)
+confint(fit.wt.am)
+
+t.test(wt ~ am, paired=FALSE, var.equal=FALSE, data=D)
+       
+summary(lm(mpg~am + wt, data=D))
+summary(lm(mpg~am + wt + qsec, data=D))
+anova(lm(mpg~am, data=D), lm(mpg~am +wt, data=D))
+```
+
+```{r, eval=TRUE, echo=FALSE}
+t_pvalue  <- round(t$p.value, 6)
+t_cilower <- abs(round(t$conf.int[2],1))
+t_ciupper <- abs(round(t$conf.int[1],1))
+t_ciptile <- attr(t$conf.int,"conf.level") * 100
+```
+
+Figure 1 shows a simple summarization of the mileage for each transmission type. There appears a 
+sizeable difference in the median, with manual transmissions getting better gas mileage
+(`r medianManual` MpG) than automatics (`r medianAutomatic` MpG).
+Doing a Student T Test (see Figure 2) shows the difference in average mileage is significant 
+(a p-value of `r t_pvalue` is less than the `r t_ciptile`-th percentile threshold of 0.05) and that the 
+`r t_ciptile`% confidence interval says automatics get 
+`r t_cilower` to `r t_ciupper` MpG *less* than manuals.
+
+So, in this data set, cars with manual transmissions do get better gas mileage, but
+remember *correlation does not imply causation*. 
+Is the mileage difference due to the transmission type or is it due to other factors such as weight or horsepower?
+Let's look further and see which factors influence mileage the most.
+
+```{r, mpgCorrelation, eval=TRUE, echo=FALSE}
+c <- round(cor(mtcars), 2)
+c[lower.tri(c,)] <- ""
+as.data.frame(c)
+
+round(cor(mtcars)["mpg",], 2)
+round(cor(mtcars)["wt",], 2)
+
+c <- cor(mtcars)["mpg",]
+c
+round(c[order(abs(c), decreasing=TRUE)], 2)
+?order
+order
+
+```
+
+Figure 3 shows the correlation between mileage and the other factors in the data set.
+
+
+### Appendix  
+
+This section contains the figures referenced in the Analysis Details.  
+
+```{r, mpgByTransBoxplot, eval=TRUE, echo=FALSE}
+```  
+
+**Figure 1**: Automobiles with manual transmissions appear to get better mileage than those with automatic transmissions  
+
+---
+
+```{r, mpgByTransTTest, eval=FALSE, echo=TRUE}
+```  
+```{r, eval=TRUE, echo=FALSE}
+t
+```  
+**Figure 2**: Mileage difference is statistically significant and manuals get better MpG  
+
+---
