@@ -27,7 +27,7 @@ D[mtcars$am == 1,'am'] <- 'Manual'
 D[,'am'] <- as.factor(D[,'am'])
 ```
 
-First, let's compare the mileage of cars with automatic transmissions to those with manual transmissions.
+First, compare the mileage of cars with automatic transmissions to those with manual transmissions.
 
 ```{r, mpgByTransBoxplot, eval=FALSE, echo=FALSE}
 boxplot(mpg ~ am, data=D, 
@@ -70,15 +70,15 @@ t_ciptile <- attr(t$conf.int,"conf.level") * 100
 
 Figure 1 shows a simple summarization of the mileage for each transmission type. There appears a 
 sizeable difference in the median, with manual transmissions getting better gas mileage
-(`r medianManual` MpG) than automatics (`r medianAutomatic` MpG).
-Doing a Student T Test (see Figure 2) shows the difference in average mileage is significant 
+(`r medianManual` MpG) than automatics (`r medianAutomatic` MpG).  
+
+A regression of mileage as a function of only tranmission type, see Figure 2, shows the difference in average mileage is significant 
 (a p-value of `r t_pvalue` is less than the `r t_ciptile`-th percentile threshold of 0.05) and that the 
 `r t_ciptile`% confidence interval says automatics get 
 `r t_cilower` to `r t_ciupper` MpG *less* than manuals.
 
 So, in this data set, cars with manual transmissions do get better gas mileage, but
-remember *correlation does not imply causation*. 
-Is the mileage difference due to the transmission type or is it due to other factors such as weight or horsepower?
+remember *correlation does not imply causation*.Is the mileage difference due to the transmission type or is it due to other factors such as weight or horsepower?
 Let's look further and see which factors influence mileage the most.
 
 ```{r, mpgCorrelation, eval=TRUE, echo=FALSE}
@@ -107,7 +107,7 @@ This section contains the figures referenced in the Analysis Details.
 ```{r, mpgByTransBoxplot, eval=TRUE, echo=FALSE}
 ```  
 
-**Figure 1**: Automobiles with manual transmissions appear to get better mileage than those with automatic transmissions  
+**Figure 1**: Automobiles with manual transmissions *appear* to get better mileage than those with automatic transmissions  
 
 ---
 
