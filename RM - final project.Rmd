@@ -1,7 +1,7 @@
 ---
-title: "Untitled"
+title: "Impact of transmission type on gas mileage was inconclusive in the Motor Trend data set"
 author: "Tim Wise"
-date: "November 2015"
+date: "December 2015"
 output:
   word_document: default
   pdf_document:
@@ -13,6 +13,12 @@ output:
 ---
 
 ### Executive Summary
+
+In this report, we looked at Motor Trend cars data set (mtcars) to see if we could determine 
+whether the type of transmission in a car, manual or automatic, had a significant effect on 
+its gas mileage, and if so, to quantify that impact.
+
+The mtcars data set includes descriptor variables like, weight, number of cylinders, displacement, transmission type, plus measured values like mileage and quarter mile time.   
 
 ### Analysis Details
 
@@ -27,7 +33,6 @@ D[mtcars$am == 1,'am'] <- 'Manual'
 D[,'am'] <- as.factor(D[,'am'])
 ```
 
-First, compare the mileage of cars with automatic transmissions to those with manual transmissions.
 
 ```{r, mpgByTransBoxplot, eval=FALSE, echo=FALSE}
 boxplot(mpg ~ am, data=D, 
@@ -35,53 +40,128 @@ boxplot(mpg ~ am, data=D,
         xlab="Transmission Type",
         ylab="Miles per Gallon")
 ```
-
 ```{r, eval=TRUE, echo=FALSE}
 medianAutomatic <- round(median(D[D$am == 'Automatic', 'mpg']), 1)
 medianManual    <- round(median(D[D$am == 'Manual', 'mpg']), 1)
 ```
 
-```{r, mpgByTransTTest, eval=TRUE, echo=FALSE}
-t <- t.test(mpg ~ am, paired=FALSE, var.equal=FALSE, data=D)
-```
+First, let's compare the mileage of cars with automatic transmissions to those with manual transmissions.
+**Figure 1** shows a boxplot of the mileage for each transmission type. It shows:  
+- there is a sizeable difference in the median, with manual transmissions getting better gas mileage
+(`r medianManual` MpG) than automatics (`r medianAutomatic` MpG).
 
-```{r, stuff, eval=FALSE, echo=FALSE}
-fit.mpg.am <- lm(mpg~am, data=D)
-summary(fit.mpg.am)
-confint(fit.mpg.am)
-
-fit.wt.am <- lm(wt ~ am, data=D)
-summary(fit.wt.am)
-confint(fit.wt.am)
-
-t.test(wt ~ am, paired=FALSE, var.equal=FALSE, data=D)
-       
-summary(lm(mpg~am + wt, data=D))
-summary(lm(mpg~am + wt + qsec, data=D))
-anova(lm(mpg~am, data=D), lm(mpg~am +wt, data=D))
+```{r, mpgByTransFit, eval=TRUE, echo=FALSE}
+fit.mpg.vs.am <- lm(mpg ~ am, data=D)
 ```
 
 ```{r, eval=TRUE, echo=FALSE}
-t_pvalue  <- round(t$p.value, 6)
-t_cilower <- abs(round(t$conf.int[2],1))
-t_ciupper <- abs(round(t$conf.int[1],1))
-t_ciptile <- attr(t$conf.int,"conf.level") * 100
+betas <- coef(summary(fit.mpg.vs.am))
+atrans.avg          <- round(betas["(Intercept)", "Estimate"], 1)
+mtrans.delta        <- round(betas["amManual",    "Estimate"], 1)
+mtrans.delta.pvalue <- round(betas["amManual",    "Pr(>|t|)"], 6)
+
+cis   <- confint(fit.mpg.vs.am)
+mtrans.delta.lower<- round(cis["amManual",  "2.5 %"], 2)
+mtrans.delta.upper<- round(cis["amManual", "97.5 %"], 1)
+
+adj.r.square <- summary(fit.mpg.vs.am)$adj.r.squared
 ```
 
-Figure 1 shows a simple summarization of the mileage for each transmission type. There appears a 
-sizeable difference in the median, with manual transmissions getting better gas mileage
-(`r medianManual` MpG) than automatics (`r medianAutomatic` MpG).  
+A simple regression of mileage as a function of transmission type (mpg ~ am), see **Figure 2**, shows:  
+- the difference in average mileage is significant 
+(the amManual p-value of `r mtrans.delta.pvalue` is less than the 95-th percentile
+threshold of 0.05)   
+- manual transmissions get `r mtrans.delta.lower` to `r mtrans.delta.upper`
+MpG *better* than the average `r atrans.avg` MpG of automatic transmissions
+(the 95% confidence interval)   
+- this fit accounts for just `r sprintf("%1.1f%%", adj.r.square*100)` of the variation in mileage 
+(the adjusted R-square value)
 
-A regression of mileage as a function of only tranmission type, see Figure 2, shows the difference in average mileage is significant 
-(a p-value of `r t_pvalue` is less than the `r t_ciptile`-th percentile threshold of 0.05) and that the 
-`r t_ciptile`% confidence interval says automatics get 
-`r t_cilower` to `r t_ciupper` MpG *less* than manuals.
+```{r, mpgByTransFitResiduals, eval=FALSE, echo=FALSE}
+plot(x=D$mpg, y=resid(fit.mpg.vs.am), 
+     main="Residuals for mpg ~ am", 
+     xlab="Fitted Values",
+     ylab="Residual Error")
+```
 
-So, in this data set, cars with manual transmissions do get better gas mileage, but
-remember *correlation does not imply causation*.Is the mileage difference due to the transmission type or is it due to other factors such as weight or horsepower?
-Let's look further and see which factors influence mileage the most.
+BUT, looking at the residuals of this fit in **Figure 3**, we see that this fit is not good at all. 
+The residuals should be random, yet we see a significant pattern that looks like parallel lines.
+This indicates the residuals contain information from other variables that should be included in 
+our model. 
 
 ```{r, mpgCorrelation, eval=TRUE, echo=FALSE}
+corr.matrix <- round(cor(mtcars), 2)
+corr.matrix[lower.tri(corr.matrix,)] <- ""
+```
+
+Let's investigate further, looking at what variables affect mileage the most. 
+**Figure 4** shows the correlation between variables in the data set. 
+In the first row, we see that mileage (mpg) is affected the most by weight (wt) with a correlation coefficient of `r corr.matrix["mpg", "wt"]`. Let's explore the relationship between mileage and weight.
+
+
+```{r, mpgVsWeight, eval=FALSE, echo=FALSE}
+#install.packages("car")
+require(car) 
+
+scatterplot(mpg ~ hp | am, data=D,
+            main="Mileage vs Weight by Transmission Type", 
+            xlab="Weight (per 1000 lbs)",
+            ylab="Miles per Gallon", 
+            reg.line=lm,
+            smoother=FALSE,
+            labels=row.names(D))
+```
+
+**Figure 5** plot the mileage verses weight for both transmissions types.
+
+
+### Appendix  
+
+This section contains the figures referenced in the Analysis Details.  
+
+---
+
+```{r, mpgByTransBoxplot, eval=TRUE, echo=TRUE}
+```  
+
+**Figure 1**: Automobiles with manual transmissions *appear* to get better mileage than those with automatic transmissions  
+
+---
+
+```{r, mpgByTransFit, eval=FALSE, echo=TRUE}
+```  
+```{r, eval=TRUE, echo=TRUE}
+summary(fit.mpg.vs.am); round(confint(fit.mpg.vs.am), 2)
+```  
+
+**Figure 2**: A regression fit of mpg ~ am regression indicates the greater mileage of manual transmissions 
+(amManual) is statistically significant and 
+ranges from `r mtrans.delta.lower` to `r mtrans.delta.upper` MpG better than automatics, but ...
+
+---
+
+```{r, mpgByTransFitResiduals, eval=TRUE, echo=TRUE}
+```  
+
+**Figure 3**: The residuals of mpg ~ am are not random, show a significant pattern, and 
+tells us this is a bad fit
+
+---
+
+```{r, mpgCorrelation, eval=TRUE, echo=TRUE}
+```
+```{r}
+as.data.frame(corr.matrix)
+```
+
+**Figure 4**: Mileage, first row, is highly correlated (|| > 0.80) to weight, number of cylinders, 
+displacment, and horsepower. And those variables are highly correlated amongst themselves.
+
+---
+
+### Errata
+
+```{r, eval=FALSE, echo=FALSE}
 c <- round(cor(mtcars), 2)
 c[lower.tri(c,)] <- ""
 as.data.frame(c)
@@ -94,28 +174,33 @@ c
 round(c[order(abs(c), decreasing=TRUE)], 2)
 ?order
 order
-
 ```
 
-Figure 3 shows the correlation between mileage and the other factors in the data set.
+```{r, stuff, eval=FALSE, echo=FALSE}
+summary(fit.mpg.vs.am)
+confint(fit.mpg.vs.am)
 
+fit.wt.am <- lm(wt ~ am, data=D)
+summary(fit.wt.am)
+confint(fit.wt.am)
 
-### Appendix  
+t.test(wt ~ am, paired=FALSE, var.equal=FALSE, data=D)
+       
+summary(lm(mpg~am + wt, data=D))
+summary(lm(mpg~am + wt + qsec, data=D))
+anova(lm(mpg~am, data=D), lm(mpg~am +wt, data=D))
+```
 
-This section contains the figures referenced in the Analysis Details.  
+```{r, stuffTTest, eval=FALSE, echo=FALSE}
+t <- t.test(mpg ~ am, data=D,paired=FALSE, var.equal = FALSE)
 
-```{r, mpgByTransBoxplot, eval=TRUE, echo=FALSE}
-```  
-
-**Figure 1**: Automobiles with manual transmissions *appear* to get better mileage than those with automatic transmissions  
-
----
-
-```{r, mpgByTransTTest, eval=FALSE, echo=TRUE}
-```  
-```{r, eval=TRUE, echo=FALSE}
-t
-```  
-**Figure 2**: Mileage difference is statistically significant and manuals get better MpG  
-
----
+t_pvalue  <- round(t$p.value, 6)
+t_cilower <- abs(round(t$conf.int[2],1))
+t_ciupper <- abs(round(t$conf.int[1],1))
+t_ciptile <- attr(t$conf.int,"conf.level") * 100
+```
+```{r, eval=FALSE, echo=FALSE}
+corr.mpg <- cor(mtcars)["mpg",]
+corr.mpg.ordered <- round(corr.mpg[order(abs(corr.mpg), decreasing=TRUE)], 2)
+corr.mpg.ordered
+```
