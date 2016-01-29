@@ -12,6 +12,12 @@ output:
     keep_md: yes
 ---
 
+```{r echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+library(knitr)
+library(scales)
+library(car)
+```
+
 ### Executive Summary
 
 In this report, we looked at Motor Trend cars data set (mtcars) to see if we could determine 
@@ -21,6 +27,7 @@ its gas mileage, and if so, to quantify that impact.
 The mtcars data set includes descriptor variables like, weight, number of cylinders, displacement, transmission type, plus measured values like mileage and quarter mile time.   
 
 ### Analysis Details
+
 
 ```{r, echo=FALSE}
 # Create our working dataset D converting the transmission type to a factor with string values
@@ -74,7 +81,7 @@ threshold of 0.05)
 - manual transmissions get `r mtrans.delta.lower` to `r mtrans.delta.upper`
 MpG *better* than the average `r atrans.avg` MpG of automatic transmissions
 (the 95% confidence interval)   
-- this fit accounts for just `r sprintf("%1.1f%%", adj.r.square*100)` of the variation in mileage 
+- this fit accounts for just `r percent(adj.r.square)` of the variation in mileage 
 (the adjusted R-square value)
 
 ```{r, mpgByTransFitResiduals, eval=FALSE, echo=FALSE}
@@ -144,7 +151,7 @@ ranges from `r mtrans.delta.lower` to `r mtrans.delta.upper` MpG better than aut
 ```  
 
 **Figure 3**: The residuals of mpg ~ am are not random, show a significant pattern, and 
-tells us this is a bad fit
+tell us this is a bad fit.
 
 ---
 
