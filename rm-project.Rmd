@@ -1,7 +1,7 @@
 ---
-title: "Impact of transmission type on gas mileage was inconclusive in the Motor Trend data set"
+title: "Transmission Type has no Impact on Car Gas Mileage"
 author: "Tim Wise"
-date: "December 2015"
+date: "January 2016"
 output:
   word_document: default
   pdf_document:
@@ -12,115 +12,216 @@ output:
     keep_md: yes
 ---
 
-```{r echo=FALSE, results='hide', message=FALSE, warning=FALSE}
-library(knitr)
-library(scales)
+```{r, echo=FALSE, error=TRUE, message=FALSE, warning=FALSE}
 library(car)
+library(corrgram)
+library(graphics)
+library(gvlma)
+library(lattice)
+library(knitr)
+library(MASS)
+library(scales)
+library(stats)
 ```
+
+
+```{r, eval=TRUE, echo=FALSE}
+# Create D the working data set
+# . add mpg to gpm
+# . add hpwt 
+# . turn transmission type into factor
+
+data(mtcars)
+
+gpm  <- (1 / mtcars$mpg) * 100
+hpwt <- mtcars$hp / mtcars$wt
+D    <- cbind(gpm, hpwt, mtcars[,!names(mtcars) %in% c('mpg')])
+
+D[mtcars$am == 0,'trans'] <- 'Automatic'
+D[mtcars$am == 1,'trans'] <- 'Manual'
+D[,'trans'] <- as.factor(D[,'trans'])
+#str(D)
+```
+
+
+```{r, gpmByTransFit, eval=TRUE, echo=FALSE}
+fit.gpm.vs.trans <- lm(gpm ~ trans, data=D)
+```
+
+```{r, eval=TRUE, echo=FALSE}
+betas <- coef(summary(fit.gpm.vs.trans))
+cis   <- confint(fit.gpm.vs.trans)
+
+atrans.gpm.avg      <- betas['(Intercept)', 'Estimate']
+atrans.gpm.ci.lower <-   cis['(Intercept)',  '2.5 %']
+atrans.gpm.ci.upper <-   cis['(Intercept)', '97.5 %']
+atrans.gpm.error    <- abs(atrans.gpm.avg - atrans.gpm.ci.lower)
+
+mtrans.gpm.avg.delta      <- betas['transManual', 'Estimate']
+mtrans.gpm.ci.lower.delta <-   cis['transManual',  '2.5 %']
+mtrans.gpm.ci.upper.delta <-   cis['transManual', '97.5 %']
+
+mtrans.gpm.avg      <- atrans.gpm.avg      + mtrans.gpm.avg.delta
+mtrans.gpm.ci.lower <- atrans.gpm.ci.lower + mtrans.gpm.ci.lower.delta  
+mtrans.gpm.ci.upper <- atrans.gpm.ci.upper + mtrans.gpm.ci.upper.delta   
+mtrans.gpm.error    <- abs(mtrans.gpm.avg  - mtrans.gpm.ci.lower)
+
+atrans.pvalue <- betas["(Intercept)", "Pr(>|t|)"]
+mtrans.pvalue <- betas["transManual", "Pr(>|t|)"]
+
+adj.r.square <- summary(fit.gpm.vs.trans)$adj.r.squared
+```
+
 
 ### Executive Summary
 
-In this report, we looked at Motor Trend cars data set (mtcars) to see if we could determine 
-whether the type of transmission in a car, manual or automatic, had a significant effect on 
-its gas mileage, and if so, to quantify that impact.
+We looked at the Motor Trend cars data set to see if  the type of 
+transmission in a car had a significant effect on its fuel consumption, 
+and if so, to quantify that effect.
 
-The mtcars data set includes descriptor variables like, weight, number of cylinders, displacement, transmission type, plus measured values like mileage and quarter mile time.   
+At first glance, we found that cars with manual transmissions 
+had better fuel economy, consuming on average
+`r round(mtrans.gpm.avg, 1)` gallons per 100 miles (gpm) 
+(+/- `r round(mtrans.gpm.error, 1)`)
+compared to an average of 
+`r round(atrans.gpm.avg, 1)` gpm 
+(+/- `r round(atrans.gpm.error, 1)`)
+for cars with automatic transmissions.
+*But correllation is not causation* and just because there is a difference
+in fuel economy doesn't mean transmission type is the cause of the
+difference.
+
+Digging deeper, we found that a car's fuel consumption was primarily a function 
+of its weight and that the type of transmission was not significant.
+The reason why cars with manual transmission had better mileage was because
+in this data set the transmission type and vehicle weight were confounders 
+and were not independent. 
+Given a car's weight you could reasonably predict its transmission type --
+The high mileage cars were light and had manual transmissions, 
+while the low mileage cars were heavy and had automatic transmissions. 
+
 
 ### Analysis Details
 
-
-```{r, echo=FALSE}
-# Create our working dataset D converting the transmission type to a factor with string values
-data(mtcars)
-D <- mtcars
-
-D[mtcars$am == 0,'am'] <- 'Automatic'
-D[mtcars$am == 1,'am'] <- 'Manual'
-
-D[,'am'] <- as.factor(D[,'am'])
-```
-
-
-```{r, mpgByTransBoxplot, eval=FALSE, echo=FALSE}
-boxplot(mpg ~ am, data=D, 
-        main="Mileage by Transmission Type",
-        xlab="Transmission Type",
-        ylab="Miles per Gallon")
-```
-```{r, eval=TRUE, echo=FALSE}
-medianAutomatic <- round(median(D[D$am == 'Automatic', 'mpg']), 1)
-medianManual    <- round(median(D[D$am == 'Manual', 'mpg']), 1)
-```
-
-First, let's compare the mileage of cars with automatic transmissions to those with manual transmissions.
-**Figure 1** shows a boxplot of the mileage for each transmission type. It shows:  
-- there is a sizeable difference in the median, with manual transmissions getting better gas mileage
-(`r medianManual` MpG) than automatics (`r medianAutomatic` MpG).
-
-```{r, mpgByTransFit, eval=TRUE, echo=FALSE}
-fit.mpg.vs.am <- lm(mpg ~ am, data=D)
-```
+We did two transformations on the cars data set. First, we inverted and scaled
+*miles per gallon* (mpg) to get *gallons per 100 miles* (gpm), or kilomiles.
+It is a better metric for comparing the fuel consumption among cars (see ...). 
+Also, we added a column, dividing horsepower (hp) by weight (wt) to get a 
+the *horsepower per 1000 lbs*. 
+As we will see, this gives us a metric that is a measure of power that is not 
+correlated with weight.
 
 ```{r, eval=TRUE, echo=FALSE}
-betas <- coef(summary(fit.mpg.vs.am))
-atrans.avg          <- round(betas["(Intercept)", "Estimate"], 1)
-mtrans.delta        <- round(betas["amManual",    "Estimate"], 1)
-mtrans.delta.pvalue <- round(betas["amManual",    "Pr(>|t|)"], 6)
-
-cis   <- confint(fit.mpg.vs.am)
-mtrans.delta.lower<- round(cis["amManual",  "2.5 %"], 2)
-mtrans.delta.upper<- round(cis["amManual", "97.5 %"], 1)
-
-adj.r.square <- summary(fit.mpg.vs.am)$adj.r.squared
+atrans.gpm.median <- median(D[D$am == 0, 'gpm'])
+mtrans.gpm.median <- median(D[D$am == 1, 'gpm'])
 ```
 
-A simple regression of mileage as a function of transmission type (mpg ~ am), see **Figure 2**, shows:  
-- the difference in average mileage is significant 
-(the amManual p-value of `r mtrans.delta.pvalue` is less than the 95-th percentile
-threshold of 0.05)   
-- manual transmissions get `r mtrans.delta.lower` to `r mtrans.delta.upper`
-MpG *better* than the average `r atrans.avg` MpG of automatic transmissions
-(the 95% confidence interval)   
-- this fit accounts for just `r percent(adj.r.square)` of the variation in mileage 
-(the adjusted R-square value)
+First, let's compare the fuel consumption of cars with automatic transmissions 
+to those  with  manual transmissions, see **Figure 1**. 
+There is a sizable difference in the median mileage, with 
+manual transmissions consuming
+`r round(mtrans.gpm.median, 2)` gpm compared to
+`r round(atrans.gpm.median, 2)` gpm for automatics.
 
-```{r, mpgByTransFitResiduals, eval=FALSE, echo=FALSE}
-plot(x=D$mpg, y=resid(fit.mpg.vs.am), 
-     main="Residuals for mpg ~ am", 
-     xlab="Fitted Values",
-     ylab="Residual Error")
-```
+Next, let's test whether the difference is significant by doing an 
+intercept-only regression of fuel consumption as a function of transmission 
+type, see **Figure 2**. We see:
 
-BUT, looking at the residuals of this fit in **Figure 3**, we see that this fit is not good at all. 
-The residuals should be random, yet we see a significant pattern that looks like parallel lines.
-This indicates the residuals contain information from other variables that should be included in 
-our model. 
+- In the Coefficients, the p-value (Pr(>|t|) for manual transmissions (transManaul) is
+`r round(mtrans.pvalue, 5)` and less than 0.05. That means
+the difference between automatics and manuals is indeed significant.
 
-```{r, mpgCorrelation, eval=TRUE, echo=FALSE}
-corr.matrix <- round(cor(mtcars), 2)
+- In the Coefficients, the Estimate column says that automatics (Intercept) consume 
+on average 
+`r round(atrans.gpm.avg,       2)` gpm, and manuals (transManual) consume
+`r round(mtrans.gpm.avg.delta, 2)` gpm less, for an average of
+`r round(mtrans.gpm.avg,       1)` gpm.
+
+- In the Confint, we see the 95th percentile interval for gpm, with automatics 
+(Intercept) consuming
+`r round(atrans.gpm.ci.lower, 2)` to 
+`r round(atrans.gpm.ci.upper, 2)` gpm and manuals (transManual) consuming 
+`r round(mtrans.gpm.ci.lower.delta, 2)` to 
+`r round(mtrans.gpm.ci.upper.delta, 2)` gpm *less*, for an interval of
+`r round(mtrans.gpm.ci.lower, 2)` to
+`r round(mtrans.gpm.ci.upper, 2)` gpm.
+
+
+```{r, gpmCorrelation, eval=TRUE, echo=FALSE}
+corr.matrix <- round(cor(D[,!names(D) %in% c('trans')]), 2)
 corr.matrix[lower.tri(corr.matrix,)] <- ""
 ```
 
-Let's investigate further, looking at what variables affect mileage the most. 
-**Figure 4** shows the correlation between variables in the data set. 
-In the first row, we see that mileage (mpg) is affected the most by weight (wt) with a correlation coefficient of `r corr.matrix["mpg", "wt"]`. Let's explore the relationship between mileage and weight.
+Let's investigate further looking at what variables affect fuel consumption the most. 
+**Figure 3** shows the correlation between variables in the data set. We see:   
+
+- In the first row,  fuel consumption (gpm) is correlated strongest to weight (wt) 
+(`r corr.matrix['gpm', 'wt']`).   
+
+- Weight (wt) is correlated to transmission type (am)
+(`r corr.matrix['wt', 'am']`).
+This is a hint that weight and tranmission may be confounders.
+
+- Weight (wt) is strongly correlated to number of cylinders (cyl), 
+displacement (disp), horsepower, but not horsepower/weight (hpwt).
+
+Let's explore the relationship between fuel consumption and weight, 
+see **Figure 4**. Here we plainly see that cars with the lowest fuel
+consumption are the lightest and have manual transmissions, and 
+the cars with the highest fuel consumption are the heaviest and have 
+automatic transmissions.
+
+Let's build a multivariate regression starting with fuel consumption as a 
+function of weight and see if transmission type is significant to the equation. 
+We consider potential regressors in a forward stepwise fashion, using 
+the function  `add1()` to help decide which regressors to add. 
+`add1()` produces an F-statistic and a p-value (like an `anova()`
+comparison) for each possible regressor. We look for p-values < 0.05 and high
+F values.
+
+**Figure 5** show the output of `add1()` given the base model (gpm ~ wt).
+Horsepower/weight (hpwt) has the most influence, with horsepower (hp) and 
+quarter mile time (qsec) next in line. From those three variables, we choose 
+to add hpwt  because 1) it is less correlated to weight than horsepower, so 
+we avoid  multiliearity among regressors, and 2) it is a cleaner definition 
+of power than quarter mile time which is a mish mash of power, drag, wind 
+resistance, etc.
 
 
-```{r, mpgVsWeight, eval=FALSE, echo=FALSE}
-#install.packages("car")
-require(car) 
+```{r, gpmByWtHpwtFit, eval=TRUE, echo=FALSE}
+fit.gpm.vs.wt.hpwt <- lm(gpm ~ wt + hpwt, data=D)
+```  
 
-scatterplot(mpg ~ hp | am, data=D,
-            main="Mileage vs Weight by Transmission Type", 
-            xlab="Weight (per 1000 lbs)",
-            ylab="Miles per Gallon", 
-            reg.line=lm,
-            smoother=FALSE,
-            labels=row.names(D))
+```{r, eval=TRUE, echo=FALSE}
+betas <- coef(summary(fit.gpm.vs.wt.hpwt))
+cis   <- confint(fit.gpm.vs.wt.hpwt)
+
+intercept.avg      <- betas['(Intercept)', 'Estimate']
+intercept.ci.lower <- cis['(Intercept)',  '2.5 %']
+intercept.ci.upper <- cis['(Intercept)', '97.5 %']
+
+wt.avg.delta      <- betas['wt', 'Estimate']
+wt.ci.lower.delta <-   cis['wt',  '2.5 %']
+wt.ci.upper.delta <-   cis['wt', '97.5 %']
+
+hpwt.avg.delta      <- betas['hpwt', 'Estimate']
+hpwt.ci.lower.delta <-   cis['hpwt',  '2.5 %']
+hpwt.ci.upper.delta <-   cis['hpwt', '97.5 %']
+
+wt.pvalue   <- betas["wt",   "Pr(>|t|)"]
+hpwt.pvalue <- betas["hpwt", "Pr(>|t|)"]
+
+adj.r.square <- summary(fit.gpm.vs.wt.hpwt)$adj.r.squared
 ```
 
-**Figure 5** plot the mileage verses weight for both transmissions types.
 
+We add hpwt to the model. Running `add1()` against the new model shows no 
+more variables can improve the model.  **Figure 6** shows the summary of the 
+final fit.
+
+
+\newpage
+\newpage
 
 ### Appendix  
 
@@ -128,86 +229,100 @@ This section contains the figures referenced in the Analysis Details.
 
 ---
 
-```{r, mpgByTransBoxplot, eval=TRUE, echo=TRUE}
+```{r, eval=TRUE, echo=TRUE}
+boxplot(gpm ~ trans, data=D, 
+        main="Mileage by Transmission Type", ylab="Gallons per Kilomile")
 ```  
 
-**Figure 1**: Automobiles with manual transmissions *appear* to get better mileage than those with automatic transmissions  
+**Figure 1**: Cars with manual transmissions use less fuel 
+than those with automatic transmissions. But is the difference significant?  
 
 ---
 
-```{r, mpgByTransFit, eval=FALSE, echo=TRUE}
+```{r, gpmByTransFit, eval=FALSE, echo=TRUE}
 ```  
 ```{r, eval=TRUE, echo=TRUE}
-summary(fit.mpg.vs.am); round(confint(fit.mpg.vs.am), 2)
+summary(fit.gpm.vs.trans)$coef; round(confint(fit.gpm.vs.trans), 2)
 ```  
 
-**Figure 2**: A regression fit of mpg ~ am regression indicates the greater mileage of manual transmissions 
-(amManual) is statistically significant and 
-ranges from `r mtrans.delta.lower` to `r mtrans.delta.upper` MpG better than automatics, but ...
+**Figure 2**: A regression fit of mpg ~ trans shows the difference between
+automatic and manual transmissions is statistically 
+significant (Pr(>|t|) = `r round(mtrans.pvalue, 5)` < 0.05)
+and that manuals consume on average 
+`r round(mtrans.gpm.avg.delta, 2)` less gpm than automatics, with a range of 
+`r round(mtrans.gpm.ci.lower.delta, 2)` to 
+`r round(mtrans.gpm.ci.upper.delta, 2)` gpm less.
 
 ---
 
-```{r, mpgByTransFitResiduals, eval=TRUE, echo=TRUE}
-```  
-
-**Figure 3**: The residuals of mpg ~ am are not random, show a significant pattern, and 
-tell us this is a bad fit.
-
----
-
-```{r, mpgCorrelation, eval=TRUE, echo=TRUE}
+```{r, gpmCorrelation, eval=TRUE, echo=TRUE}
 ```
 ```{r}
-as.data.frame(corr.matrix)
+kable(as.data.frame(corr.matrix), digits=2, align='r', format='markdown')
 ```
 
-**Figure 4**: Mileage, first row, is highly correlated (|| > 0.80) to weight, number of cylinders, 
-displacment, and horsepower. And those variables are highly correlated amongst themselves.
+**Figure 3**: Fuel consumption, the first row, is correlated most to weight 
+(`r corr.matrix['gpm', 'wt']`) . It is also 
+correlated to number of cylinders, displacment, and horsepower, all of which 
+are highly correlated amongst themselves. Note that weight and horsepower/weight
+are not correlated (`r corr.matrix['wt', 'hpwt']`).
 
 ---
 
-### Errata
-
-```{r, eval=FALSE, echo=FALSE}
-c <- round(cor(mtcars), 2)
-c[lower.tri(c,)] <- ""
-as.data.frame(c)
-
-round(cor(mtcars)["mpg",], 2)
-round(cor(mtcars)["wt",], 2)
-
-c <- cor(mtcars)["mpg",]
-c
-round(c[order(abs(c), decreasing=TRUE)], 2)
-?order
-order
+```{r, eval=TRUE, echo=TRUE}
+scatterplot(gpm ~ wt | trans, data=D,
+            main="Mileage vs Weight by Transmission Type", 
+            ylab="Gallons per Kilomile", xlab="Weight (Klbs)", 
+            labels=row.names(D), smoother=FALSE, legend.coords='bottomright')
 ```
 
-```{r, stuff, eval=FALSE, echo=FALSE}
-summary(fit.mpg.vs.am)
-confint(fit.mpg.vs.am)
+**Figure 4**: Here we plainly see that cars with the lowest fuel
+consumption are the lightest and have manual transmissions, and 
+the cars with the highest fuel consumption are the heaviest and have 
+automatic transmissions.
 
-fit.wt.am <- lm(wt ~ am, data=D)
-summary(fit.wt.am)
-confint(fit.wt.am)
+---
 
-t.test(wt ~ am, paired=FALSE, var.equal=FALSE, data=D)
-       
-summary(lm(mpg~am + wt, data=D))
-summary(lm(mpg~am + wt + qsec, data=D))
-anova(lm(mpg~am, data=D), lm(mpg~am +wt, data=D))
-```
+```{r, eval=TRUE, echo=TRUE}
+fit.gpm.vs.wt <- lm(gpm ~ wt, data=D);
+add1(fit.gpm.vs.wt, D, test="F")
+```  
 
-```{r, stuffTTest, eval=FALSE, echo=FALSE}
-t <- t.test(mpg ~ am, data=D,paired=FALSE, var.equal = FALSE)
+**Figure 5**: With a base model of fuel consumption as a function of weight, 
+use `add1()` to evaluate with variable to add next. Horsepower/weight 
+(hpwt) has the highest F value and would have the most influence.
 
-t_pvalue  <- round(t$p.value, 6)
-t_cilower <- abs(round(t$conf.int[2],1))
-t_ciupper <- abs(round(t$conf.int[1],1))
-t_ciptile <- attr(t$conf.int,"conf.level") * 100
-```
-```{r, eval=FALSE, echo=FALSE}
-corr.mpg <- cor(mtcars)["mpg",]
-corr.mpg.ordered <- round(corr.mpg[order(abs(corr.mpg), decreasing=TRUE)], 2)
-corr.mpg.ordered
-```
+---
+
+```{r, gpmByWtHpwtfit, eval=TRUE, echo=TRUE}
+fit.gpm.vs.wt.hpwt <- lm(gpm ~ wt + hpwt, data=D)
+```  
+```{r, eval=TRUE, echo=TRUE}
+summary(fit.gpm.vs.wt.hpwt)
+round(confint (fit.gpm.vs.wt.hpwt),  2)
+round(sqrt(vif(fit.gpm.vs.wt.hpwt)), 4)
+shapiro.test(rstandard(fit.gpm.vs.wt.hpwt))
+```  
+
+**Figure 6**: The summary of the final model. Both regressors are significant.
+The Adjusted R-squared value says the model accounts for 
+`r percent(adj.r.square)` of the variance of the fuel consumption.
+The variance inflation factors (vif) are near 1 and indicate there is no
+multicolliniarity among the regressors. The Shapiro-Wilk test, with a 
+p-value > 0.05, says that the residuals of the fit are normally distributed.
+
+---
+
+
+```{r eval=TRUE, echo=FALSE, fig.width=6, fig.height=3}
+par(mfrow=c(1,3))
+plot(fit.gpm.vs.wt.hpwt, which=1)
+qqPlot(fit.gpm.vs.wt.hpwt, id.n=0, main="Normal Q-Q")
+hist(rstandard(fit.gpm.vs.wt.hpwt), col='gray',  main='Standard Residuals', xlab='')
+par(mfrow=c(1,1))
+```  
+
+**Figure 7**: The diagnostic plots for gpm ~ wt + hpwt. In Residual vs Fitted,
+the values look reasonably randomly distributed about 0. In Normal Q-Q, the 
+points lie reasonably along the diagonal. And the histogram of standardized
+residuals looks like a normal distribution. I am satisfied with this fit.
