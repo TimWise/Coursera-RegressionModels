@@ -1,5 +1,5 @@
 ---
-title: "Transmission Type has no Impact on Car Gas Mileage"
+title: "Transmission Type has no Impact on Car Fuel Consumption"
 author: "Tim Wise"
 date: "January 2016"
 output:
@@ -61,9 +61,9 @@ mtrans.gpm.avg.delta      <- betas['transManual', 'Estimate']
 mtrans.gpm.ci.lower.delta <-   cis['transManual',  '2.5 %']
 mtrans.gpm.ci.upper.delta <-   cis['transManual', '97.5 %']
 
-mtrans.gpm.avg      <- atrans.gpm.avg      + mtrans.gpm.avg.delta
-mtrans.gpm.ci.lower <- atrans.gpm.ci.lower + mtrans.gpm.ci.lower.delta  
-mtrans.gpm.ci.upper <- atrans.gpm.ci.upper + mtrans.gpm.ci.upper.delta   
+mtrans.gpm.avg      <- atrans.gpm.avg + mtrans.gpm.avg.delta
+mtrans.gpm.ci.lower <- atrans.gpm.avg + mtrans.gpm.ci.lower.delta  
+mtrans.gpm.ci.upper <- atrans.gpm.avg + mtrans.gpm.ci.upper.delta   
 mtrans.gpm.error    <- abs(mtrans.gpm.avg  - mtrans.gpm.ci.lower)
 
 atrans.pvalue <- betas["(Intercept)", "Pr(>|t|)"]
@@ -80,7 +80,7 @@ transmission in a car had a significant effect on its fuel consumption,
 and if so, to quantify that effect.
 
 At first glance, we found that cars with manual transmissions 
-had better fuel economy, consuming on average
+used less fuel, consuming on average
 `r round(mtrans.gpm.avg, 1)` gallons per 100 miles (gpm) 
 (+/- `r round(mtrans.gpm.error, 1)`)
 compared to an average of 
@@ -88,15 +88,14 @@ compared to an average of
 (+/- `r round(atrans.gpm.error, 1)`)
 for cars with automatic transmissions.
 *But correllation is not causation* and just because there is a difference
-in fuel economy doesn't mean transmission type is the cause of the
+in fuel consumption doesn't mean transmission type is the cause of the
 difference.
 
 Digging deeper, we found that a car's fuel consumption was primarily a function 
-of its weight and that the type of transmission was not significant.
-The reason why cars with manual transmission had better mileage was because
+of its weight and that the type of transmission was, in the end, not significant.
+The reason why cars with manual transmissions used less fuel was because
 in this data set the transmission type and vehicle weight were confounders 
 and were not independent. 
-Given a car's weight you could reasonably predict its transmission type --
 The high mileage cars were light and had manual transmissions, 
 while the low mileage cars were heavy and had automatic transmissions. 
 
@@ -104,11 +103,11 @@ while the low mileage cars were heavy and had automatic transmissions.
 ### Analysis Details
 
 We did two transformations on the cars data set. First, we inverted and scaled
-*miles per gallon* (mpg) to get *gallons per 100 miles* (gpm), or kilomiles.
-It is a better metric for comparing the fuel consumption among cars (see ...). 
+miles per gallon (mpg) to get gallons per 100 miles.
+*Gallons per kilomile (gpm)* is a better metric for comparing the fuel consumption among cars. 
 Also, we added a column, dividing horsepower (hp) by weight (wt) to get a 
 the *horsepower per 1000 lbs*. 
-As we will see, this gives us a metric that is a measure of power that is not 
+As we will see, this gives us a a measure of power that is not 
 correlated with weight.
 
 ```{r, eval=TRUE, echo=FALSE}
@@ -116,35 +115,20 @@ atrans.gpm.median <- median(D[D$am == 0, 'gpm'])
 mtrans.gpm.median <- median(D[D$am == 1, 'gpm'])
 ```
 
-First, let's compare the fuel consumption of cars with automatic transmissions 
-to those  with  manual transmissions, see **Figure 1**. 
-There is a sizable difference in the median mileage, with 
-manual transmissions consuming
-`r round(mtrans.gpm.median, 2)` gpm compared to
-`r round(atrans.gpm.median, 2)` gpm for automatics.
-
-Next, let's test whether the difference is significant by doing an 
-intercept-only regression of fuel consumption as a function of transmission 
-type, see **Figure 2**. We see:
-
-- In the Coefficients, the p-value (Pr(>|t|) for manual transmissions (transManaul) is
-`r round(mtrans.pvalue, 5)` and less than 0.05. That means
-the difference between automatics and manuals is indeed significant.
-
-- In the Coefficients, the Estimate column says that automatics (Intercept) consume 
-on average 
-`r round(atrans.gpm.avg,       2)` gpm, and manuals (transManual) consume
-`r round(mtrans.gpm.avg.delta, 2)` gpm less, for an average of
-`r round(mtrans.gpm.avg,       1)` gpm.
-
-- In the Confint, we see the 95th percentile interval for gpm, with automatics 
-(Intercept) consuming
-`r round(atrans.gpm.ci.lower, 2)` to 
-`r round(atrans.gpm.ci.upper, 2)` gpm and manuals (transManual) consuming 
-`r round(mtrans.gpm.ci.lower.delta, 2)` to 
-`r round(mtrans.gpm.ci.upper.delta, 2)` gpm *less*, for an interval of
-`r round(mtrans.gpm.ci.lower, 2)` to
-`r round(mtrans.gpm.ci.upper, 2)` gpm.
+First let's compare the fuel consumption of cars with automatic transmissions 
+to those with  manual transmissions.
+**Figure 1a** shows there is a sizable difference in the fuel consumption of 
+manuals verses automatics. 
+We verify the difference is significant by doing an  intercept-only
+regression of fuel consumption as a function of transmission type.
+See **Figure 2** for an interpretation of the regression results. 
+In short, manuals use less fuel, consuming on average
+`r round(mtrans.gpm.avg, 1)` gpm 
+(+/- `r round(mtrans.gpm.error, 1)`)
+compared to an average of 
+`r round(atrans.gpm.avg, 1)` gpm 
+(+/- `r round(atrans.gpm.error, 1)`)
+for automatics.
 
 
 ```{r, gpmCorrelation, eval=TRUE, echo=FALSE}
@@ -152,41 +136,35 @@ corr.matrix <- round(cor(D[,!names(D) %in% c('trans')]), 2)
 corr.matrix[lower.tri(corr.matrix,)] <- ""
 ```
 
-Let's investigate further looking at what variables affect fuel consumption the most. 
-**Figure 3** shows the correlation between variables in the data set. We see:   
+Digging deeper, in **Figure 3**, we see that fuel consumption is most 
+correlated to weight.
+Plotting fuel consumption verses weight in **Figure 4**, 
+we see transmission type is not spread evenly over weight.
+(We see another view of that relationship in **Figure 1b**.)
+This reason for the significant difference in fuel consumption 
+between automatics and manuals.
+We also see (looking at the two trend lines) that if we account for weight, 
+there doesn't seem to be much difference in between the fuel consumption of 
+automatics and manuals. 
+Let's build a regression model to investigate that.
 
-- In the first row,  fuel consumption (gpm) is correlated strongest to weight (wt) 
-(`r corr.matrix['gpm', 'wt']`).   
-
-- Weight (wt) is correlated to transmission type (am)
-(`r corr.matrix['wt', 'am']`).
-This is a hint that weight and tranmission may be confounders.
-
-- Weight (wt) is strongly correlated to number of cylinders (cyl), 
-displacement (disp), horsepower, but not horsepower/weight (hpwt).
-
-Let's explore the relationship between fuel consumption and weight, 
-see **Figure 4**. Here we plainly see that cars with the lowest fuel
-consumption are the lightest and have manual transmissions, and 
-the cars with the highest fuel consumption are the heaviest and have 
-automatic transmissions.
-
-Let's build a multivariate regression starting with fuel consumption as a 
-function of weight and see if transmission type is significant to the equation. 
-We consider potential regressors in a forward stepwise fashion, using 
-the function  `add1()` to help decide which regressors to add. 
+Starting with a base model of fuel consumption as a function of weight,
+we will iterate in a forward step-wise fashion, using 
+the function  `add1()` to help decide which regressors to include. 
 `add1()` produces an F-statistic and a p-value (like an `anova()`
-comparison) for each possible regressor. We look for p-values < 0.05 and high
-F values.
+comparison) for each possible regressor. 
+We look for p-values < 0.05 and high F values.
 
-**Figure 5** show the output of `add1()` given the base model (gpm ~ wt).
-Horsepower/weight (hpwt) has the most influence, with horsepower (hp) and 
+**Figure 5** shows the output of `add1()` given the base model (gpm ~ wt).
+Horsepower/weight (hpwt) has the highest F value, with horsepower (hp) and 
 quarter mile time (qsec) next in line. From those three variables, we choose 
-to add hpwt  because 1) it is less correlated to weight than horsepower, so 
-we avoid  multiliearity among regressors, and 2) it is a cleaner definition 
-of power than quarter mile time which is a mish mash of power, drag, wind 
-resistance, etc.
-
+to add hpwt because 
+1) it is not correlated to weight like horsepower, so  we avoid multicollinearity 
+among regressors, and 
+2) it is design-time parameter
+and a cleaner definition  of power than quarter mile time, which can only be 
+measured after a car built and is a mash of power, drag, wind resistance, 
+driver, etc.
 
 ```{r, gpmByWtHpwtFit, eval=TRUE, echo=FALSE}
 fit.gpm.vs.wt.hpwt <- lm(gpm ~ wt + hpwt, data=D)
@@ -214,14 +192,17 @@ hpwt.pvalue <- betas["hpwt", "Pr(>|t|)"]
 adj.r.square <- summary(fit.gpm.vs.wt.hpwt)$adj.r.squared
 ```
 
+Adding add hpwt to the model and running `add1()` against the new model shows no 
+more variables can improve the model. **Figure 6** shows a summary 
+of the final fit. 
+**Figure 7** shows diagnostic plots and a discussion of them.
+This seems a good, parsimonious model.
 
-We add hpwt to the model. Running `add1()` against the new model shows no 
-more variables can improve the model.  **Figure 6** shows the summary of the 
-final fit.
-
-
-\newpage
-\newpage
+Now, to answer the question of whether transmission type affects fuel 
+consumption. 
+In **Figure 8**, we use `anova()` and find that transmission type
+would not be a significant factor in our model. So we conclude that transmission
+type does not impact fuel consumption.
 
 ### Appendix  
 
@@ -229,57 +210,88 @@ This section contains the figures referenced in the Analysis Details.
 
 ---
 
-```{r, eval=TRUE, echo=TRUE}
-boxplot(gpm ~ trans, data=D, 
-        main="Mileage by Transmission Type", ylab="Gallons per Kilomile")
-```  
+```{r, eval=TRUE, echo=FALSE, fig.width=7}
+atrans.gpm.median <- median(D[D$am == 0, 'gpm'])
+mtrans.gpm.median <- median(D[D$am == 1, 'gpm'])
 
-**Figure 1**: Cars with manual transmissions use less fuel 
-than those with automatic transmissions. But is the difference significant?  
+atrans.wt.median  <- median(D[D$am == 0, 'wt'])
+mtrans.wt.median  <- median(D[D$am == 1, 'wt'])
+
+par(mfrow=c(1,2))
+boxplot(gpm  ~ trans, data=D, xlab="Figure 1a", ylab="Gallons per Kilomile", main="Fuel Consumption")
+boxplot(wt   ~ trans, data=D, xlab="Figure 1b", ylab="Kilopounds",           main="Weight")
+par(mfrow=c(1,1))
+```
+
+**Figures 1a and 1b**: Cars with manual transmissions use less fuel 
+(`r round(mtrans.gpm.median, 2)` gpm) than automatics 
+(`r round(atrans.gpm.median, 2)` gpm).
+and are lighter 
+(`r round(mtrans.wt.median, 2)` Klbs) than automatics 
+(`r round(atrans.wt.median, 2)` Klbs).
+But are the differences significant?
 
 ---
 
 ```{r, gpmByTransFit, eval=FALSE, echo=TRUE}
 ```  
 ```{r, eval=TRUE, echo=TRUE}
-summary(fit.gpm.vs.trans)$coef; round(confint(fit.gpm.vs.trans), 2)
+summary(fit.gpm.vs.trans)$coef; 
+round(confint(fit.gpm.vs.trans), 2)
 ```  
 
-**Figure 2**: A regression fit of mpg ~ trans shows the difference between
-automatic and manual transmissions is statistically 
-significant (Pr(>|t|) = `r round(mtrans.pvalue, 5)` < 0.05)
-and that manuals consume on average 
-`r round(mtrans.gpm.avg.delta, 2)` less gpm than automatics, with a range of 
+**Figure 2**: An intercept-only regression fit of mpg ~ trans shows the difference 
+between automatic and manual transmissions is statistically 
+significant (for transManual, Pr(>|t|) = `r round(mtrans.pvalue, 5)` < 0.05).
+Automatics consume on average 
+`r round(atrans.gpm.avg, 2)` gpm, 
+with a confidence interval of 
+`r round(atrans.gpm.ci.lower, 2)` to 
+`r round(atrans.gpm.ci.upper, 2)` gpm.
+Manuals consume on average 
+`r round(mtrans.gpm.avg.delta, 2)` less gpm than automatics, 
+with a confidence interval of 
 `r round(mtrans.gpm.ci.lower.delta, 2)` to 
-`r round(mtrans.gpm.ci.upper.delta, 2)` gpm less.
+`r round(mtrans.gpm.ci.upper.delta, 2)` gpm less. 
+Adding the deltas for manuals with the 
+`r round(atrans.gpm.avg, 2)`
+average for automatics gives, for manuals, 
+an average of
+`r round(mtrans.gpm.avg, 2)` gpm, 
+with a confidence interval of 
+`r round(mtrans.gpm.ci.lower, 2)` to 
+`r round(mtrans.gpm.ci.upper, 2)` gpm.
 
 ---
 
-```{r, gpmCorrelation, eval=TRUE, echo=TRUE}
+```{r, gpmCorrelation, eval=FALSE, echo=FALSE}
 ```
-```{r}
+```{r, eval=TRUE, echo=FALSE}
 kable(as.data.frame(corr.matrix), digits=2, align='r', format='markdown')
 ```
 
-**Figure 3**: Fuel consumption, the first row, is correlated most to weight 
-(`r corr.matrix['gpm', 'wt']`) . It is also 
-correlated to number of cylinders, displacment, and horsepower, all of which 
-are highly correlated amongst themselves. Note that weight and horsepower/weight
-are not correlated (`r corr.matrix['wt', 'hpwt']`).
+**Figure 3**: Fuel consumption (gpm), the first row, is correlated most to weight (wt)
+(`r corr.matrix['gpm', 'wt']`). 
+Weight is also  correlated to displacement (disp), number of cylinders (cyl), 
+and horsepower (hp), all of which  are also correlated with fuel consumption. 
+Weight is not correlated to horsepower/weight (hpwt)
+(`r corr.matrix['hpwt', 'wt']`).
 
 ---
 
-```{r, eval=TRUE, echo=TRUE}
+```{r, eval=TRUE, echo=FALSE, fig.width=7}
 scatterplot(gpm ~ wt | trans, data=D,
             main="Mileage vs Weight by Transmission Type", 
             ylab="Gallons per Kilomile", xlab="Weight (Klbs)", 
             labels=row.names(D), smoother=FALSE, legend.coords='bottomright')
 ```
 
-**Figure 4**: Here we plainly see that cars with the lowest fuel
-consumption are the lightest and have manual transmissions, and 
-the cars with the highest fuel consumption are the heaviest and have 
-automatic transmissions.
+**Figure 4**: Here we plainly see transmission type is not spread evenly across
+weight. The cars with the lowest fuel consumption are the lightest and have 
+manual transmissions, and the cars with the highest fuel consumption are 
+the heaviest and have  automatic transmissions. It also looks like once we 
+account for weight, there is not that much difference in fuel consumption
+between manuals and automatics. 
 
 ---
 
@@ -289,7 +301,7 @@ add1(fit.gpm.vs.wt, D, test="F")
 ```  
 
 **Figure 5**: With a base model of fuel consumption as a function of weight, 
-use `add1()` to evaluate with variable to add next. Horsepower/weight 
+use `add1()` to evaluate which variable to add next. Horsepower/weight 
 (hpwt) has the highest F value and would have the most influence.
 
 ---
@@ -308,13 +320,16 @@ shapiro.test(rstandard(fit.gpm.vs.wt.hpwt))
 The Adjusted R-squared value says the model accounts for 
 `r percent(adj.r.square)` of the variance of the fuel consumption.
 The variance inflation factors (vif) are near 1 and indicate there is no
-multicolliniarity among the regressors. The Shapiro-Wilk test, with a 
+multicollinearity  among the regressors. The Shapiro-Wilk test, with a 
 p-value > 0.05, says that the residuals of the fit are normally distributed.
+Note that the Intercept term is not significant, it's p-value is > 0.05. 
+That means the reported Intercept value is not significantly different from 0, 
+which makes sense for this regression.
 
 ---
 
 
-```{r eval=TRUE, echo=FALSE, fig.width=6, fig.height=3}
+```{r eval=TRUE, echo=FALSE, fig.width=8, fig.height=4}
 par(mfrow=c(1,3))
 plot(fit.gpm.vs.wt.hpwt, which=1)
 qqPlot(fit.gpm.vs.wt.hpwt, id.n=0, main="Normal Q-Q")
@@ -325,4 +340,21 @@ par(mfrow=c(1,1))
 **Figure 7**: The diagnostic plots for gpm ~ wt + hpwt. In Residual vs Fitted,
 the values look reasonably randomly distributed about 0. In Normal Q-Q, the 
 points lie reasonably along the diagonal. And the histogram of standardized
-residuals looks like a normal distribution. I am satisfied with this fit.
+residuals looks very much like a normal distribution. 
+
+---
+
+```{r eval=TRUE, echo=FALSE}
+anova(lm(gpm ~ wt + hpwt, D),  lm(gpm ~ wt + hpwt + trans, D))
+```  
+
+**Figure 8**: Using `anova()`, we compare our base model (Model 1) to one that 
+includes transmission type (Model 2). The Pr(>F) for Model 2 is greater than 
+0.05 which says transmission type would not make a significant difference 
+to the model.
+
+---
+
+A note on formatting: To get to five pages, I knitr'd to a Word docx file, 
+then in Word, changed margins, reduced overall font size, and inserted 
+page breaks to prevent figures from spanning pages.
