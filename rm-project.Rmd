@@ -143,9 +143,9 @@ we see transmission type is not spread evenly over weight.
 (We see another view of that relationship in **Figure 1b**.)
 This reason for the significant difference in fuel consumption 
 between automatics and manuals.
-We also see (looking at the two trend lines) that if we account for weight, 
-there doesn't seem to be much difference in between the fuel consumption of 
-automatics and manuals. 
+We also see, looking at the two trend lines in **Figure 4**, that if we account 
+for weight, there doesn't seem to be much difference in between the fuel 
+consumption of automatics and manuals. 
 Let's build a regression model to investigate that.
 
 Starting with a base model of fuel consumption as a function of weight,
@@ -192,7 +192,7 @@ hpwt.pvalue <- betas["hpwt", "Pr(>|t|)"]
 adj.r.square <- summary(fit.gpm.vs.wt.hpwt)$adj.r.squared
 ```
 
-Adding add hpwt to the model and running `add1()` against the new model shows no 
+Adding hpwt to the model and running `add1()` against the new model shows no 
 more variables can improve the model. **Figure 6** shows a summary 
 of the final fit. 
 **Figure 7** shows diagnostic plots and a discussion of them.
@@ -225,7 +225,7 @@ par(mfrow=c(1,1))
 
 **Figures 1a and 1b**: Cars with manual transmissions use less fuel 
 (`r round(mtrans.gpm.median, 2)` gpm) than automatics 
-(`r round(atrans.gpm.median, 2)` gpm).
+(`r round(atrans.gpm.median, 2)` gpm)
 and are lighter 
 (`r round(mtrans.wt.median, 2)` Klbs) than automatics 
 (`r round(atrans.wt.median, 2)` Klbs).
